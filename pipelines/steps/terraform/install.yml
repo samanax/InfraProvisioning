@@ -1,0 +1,13 @@
+steps:
+  - bash: |
+      TERRAFORM_BIN_DIR=$(mktemp -d)
+      cd $TERRAFORM_BIN_DIR
+      curl -fsSLO https://releases.hashicorp.com/terraform/$(TERRAFORM_VERSION)/terraform_$(TERRAFORM_VERSION)_linux_amd64.zip
+      unzip terraform_$(TERRAFORM_VERSION)_linux_amd64.zip -d $TERRAFORM_BIN_DIR
+
+      TERRAFORM_BINARY=${TERRAFORM_BIN_DIR}/terraform
+      $TERRAFORM_BINARY --version
+      echo "##vso[task.setvariable variable=terraform_binary]$TERRAFORM_BINARY"
+    displayName: Install Terraform v$(TERRAFORM_VERSION)
+    env:
+      TF_IN_AUTOMATION: 'true'

@@ -1,0 +1,13 @@
+parameters:
+  workingDirectory: "$(Build.SourcesDirectory)/terraform"
+
+steps:
+  - bash: |
+      $TERRAFORM_BINARY init \
+        -input=false \
+        -backend-config="storage_account_name=$(TERRAFORM_BACKEND_NAME)" \
+        -backend-config="access_key=$(TERRAFORM_BACKEND_KEY)"
+    displayName: Initialize Terraform
+    workingDirectory: ${{ parameters.workingDirectory }}
+    env:
+      TF_IN_AUTOMATION: "true"

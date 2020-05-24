@@ -1,0 +1,62 @@
+parameters:
+  workspace: ""
+  tf_vars: {}
+
+jobs:
+  - job: plan_terraform
+    displayName: Create Terraform plan
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ../../steps/terraform/install.yml
+
+      - template: ../../steps/terraform/init.yml
+
+      - template: ../../steps/terraform/workspace-select.yml
+        parameters:
+          workspace: ${{ parameters.workspace }}
+
+      - bash: |
+          $TERRAFORM_BINARY plan \
+            -out=${{ parameters.workspace }}.tfplan \
+            -input=false \
+            -detailed-exitcode \
+            -no-color | tee plan.txt
+
+          # Check if plan has changes
+          case ${PIPESTATUS[0]} in
+            0)
+              echo "##vso[task.logissue type=warning]Environment \"${{ parameters.workspace }}\": Plan has no changes"
+              exit 0
+              ;;
+            1)
+              echo "An error occurred" >&2
+              exit 1
+              ;;
+            2)
+              # Terraform plan had changes
+              echo "##vso[task.logissue type=warning]Environment \"${{ parameters.workspace }}\": $(grep "Plan:" plan.txt) Check logs for more information."
+              exit 0
+          esac
+        displayName: Create Terraform plan
+        workingDirectory: "$(Build.SourcesDirectory)/terraform"
+        env:
+          ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+          TF_VAR_service_principal_client_id: $(ARM_CLIENT_ID)
+          TF_VAR_service_principal_client_secret: $(ARM_CLIENT_SECRET)
+          TF_VAR_tenant_id: $(ARM_TENANT_ID)
+          ${{ each var in parameters.tf_vars }}:
+            TF_VAR_${{ var.key }}: ${{ var.value }}
+
+      - task: ArchiveFiles@2
+        displayName: Compress Terraform directory
+        inputs:
+          rootFolderOrFile: "$(Build.SourcesDirectory)/terraform"
+          archiveFile: "$(Build.ArtifactStagingDirectory)/terraform.zip"
+
+      - publish: "$(Build.ArtifactStagingDirectory)/terraform.zip"
+        displayName: Publish Terraform artifact
+        artifact: terraform-plan-${{ parameters.workspace }}

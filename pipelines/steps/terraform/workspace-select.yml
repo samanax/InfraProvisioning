@@ -1,0 +1,17 @@
+parameters:
+  workspace: ""
+  workingDirectory: "$(Build.SourcesDirectory)/terraform"
+
+steps:
+  - bash: |
+      TF_WORKSPACES=$($TERRAFORM_BINARY workspace list)
+      if [[ $TF_WORKSPACES =~ ${{ parameters.workspace }} ]]
+      then
+        echo "Switching to workspace ${{ parameters.workspace }}"
+        $TERRAFORM_BINARY workspace select ${{ parameters.workspace }}
+      else
+        echo "Workspace does not exist, creating"
+        $TERRAFORM_BINARY workspace new ${{ parameters.workspace }}
+      fi
+    displayName: Select Terraform workspace
+    workingDirectory: ${{ parameters.workingDirectory }}

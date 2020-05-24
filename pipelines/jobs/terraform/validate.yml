@@ -1,0 +1,14 @@
+jobs:
+  - job: validate_terraform
+    displayName: Validate Terraform
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ../../steps/terraform/install.yml
+
+      - bash: |
+          # Validate Terraform scripts
+          $TERRAFORM_BINARY init -backend=false
+          $TERRAFORM_BINARY validate
+        displayName: Validate Terraform scripts
+        workingDirectory: "$(Build.SourcesDirectory)/terraform"

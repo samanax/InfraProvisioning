@@ -1,0 +1,48 @@
+
+variables:
+  project: shared-resources
+
+stages:
+  # - stage: prestate
+  #   displayName: prestate
+  #   variables:
+  #     - group: development
+  #     - group: shared
+  #   jobs:
+  #     - job: runbash
+  #       steps:
+  #       - task: Bash@3
+  #         inputs:
+  #           targetType: 'filePath' # Optional. Options: filePath, inline
+  #           filePath: ./tools/create-terraform-backend.sh
+  #           arguments: dev
+    
+
+  - stage: validate
+    displayName: Validate
+    variables:
+      - group: shared
+    jobs:
+      - template: pipelines/jobs/terraform/validate.yml
+
+  - stage: plan_dev
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    displayName: Plan for development
+    variables:
+      - group: shared
+
+    jobs:
+      - template: pipelines/jobs/terraform/plan.yml
+        parameters:
+          workspace: dev
+
+  - stage: apply_dev
+    displayName: Apply for development
+    variables:
+      - group: shared
+
+    jobs:
+      - template: pipelines/jobs/terraform/apply.yml
+        parameters:
+          project: ${{ variables.project }}
+          workspace: dev

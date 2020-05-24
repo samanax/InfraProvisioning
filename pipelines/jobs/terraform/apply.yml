@@ -1,0 +1,50 @@
+parameters:
+  project: ""
+  workspace: ""
+
+jobs:
+  - deployment: apply_terraform
+    displayName: Apply Terraform
+    environment: ${{ parameters.project }}-${{ parameters.workspace }}
+    pool:
+      vmImage: "Ubuntu-16.04"
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - download: current
+              artifact: terraform-plan-${{ parameters.workspace }}
+              displayName: Download Terraform files
+
+            - task: ExtractFiles@1
+              displayName: Decompress Terraform files
+              inputs:
+                archiveFilePatterns: "$(Pipeline.Workspace)/terraform-plan-${{ parameters.workspace }}/terraform.zip"
+                destinationFolder: "$(Pipeline.Workspace)"
+                cleanDestinationFolder: false
+
+            - bash: chmod -R +x $(Pipeline.Workspace)/terraform/.terraform/plugins/**/terraform*
+              displayName: Make Terraform plugins executable
+
+            - template: ../../steps/terraform/install.yml
+
+            - bash: |
+                $TERRAFORM_BINARY apply \
+                  -input=false \
+                  -auto-approve \
+                  -no-color \
+                  ${{ parameters.workspace }}.tfplan
+              displayName: Apply Terraform plan
+              workingDirectory: $(Pipeline.Workspace)/terraform
+              env:
+                TF_IN_AUTOMATION: "true"
+                ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+                ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+                ARM_TENANT_ID: $(ARM_TENANT_ID)
+                ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+
+            - template: ../../steps/terraform/output-save.yml
+              parameters:
+                workingDirectory: $(Pipeline.Workspace)/terraform
+                project: ${{ parameters.project }}
+                workspace: ${{ parameters.workspace }}

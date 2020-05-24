@@ -1,0 +1,3 @@
+steps:
+  - bash: az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) -p $(ARM_CLIENT_SECRET)
+    displayName: Login to Azure

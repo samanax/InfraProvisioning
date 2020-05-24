@@ -1,0 +1,24 @@
+parameters:
+  workingDirectory: '$(Build.SourcesDirectory)/terraform'
+  project: ''
+  workspace: ''
+
+steps:
+  - bash: |
+      TERRAFORM_OUTPUT=$($TERRAFORM_BINARY output -json | jq -c . | base64 | tr -d '\n')
+      echo $TERRAFORM_OUTPUT | base64 -d | jq .
+      echo $TERRAFORM_OUTPUT | base64 -d > $(Build.ArtifactStagingDirectory)/terraform-output.json
+    displayName: Get Terraform output
+    workingDirectory: ${{ parameters.workingDirectory }}
+
+  - template: ../az/login.yml
+
+  - bash: |
+      az storage copy \
+        --subscription $(ARM_SUBSCRIPTION_ID) \
+        --blob-type AppendBlob \
+        --source $(Build.ArtifactStagingDirectory)/terraform-output.json \
+        --destination-account-name obrameterraform${{ parameters.workspace }} \
+        --destination-container terraformoutput \
+        --destination-blob ${{ parameters.project }}-${{ parameters.workspace }}.json
+    displayName: Save Terraform output to Storage
